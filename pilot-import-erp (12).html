@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#5C7541">
+<title>PILOT — Import Réalisations ERP</title>
+<style>
+:root{
+  --terracotta:#C44536;--terracotta-dark:#9B3429;
+  --olive:#5C7541;--olive-dark:#44582F;--olive-light:#7A9659;
+  --safran:#E8A33D;--safran-light:#F5C57A;
+  --sable:#F4E4C1;--sable-light:#FAF1DC;--sable-dark:#E5D2A7;
+  --encre:#1F2937;--encre-soft:#4B5563;--blanc:#FFFFFF;
+  --vert:#4D8B3A;--rouge:#C44536;
+  --shadow:0 2px 8px rgba(31,41,55,.08);--shadow-lg:0 8px 24px rgba(31,41,55,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:Arial,sans-serif;font-size:16px;color:var(--encre);background:var(--sable-light);min-height:100vh}
+h1,h2,h3{font-family:Georgia,serif;font-weight:700}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+
+.app-header{background:var(--olive);color:var(--sable);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow);position:sticky;top:0;z-index:100}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:36px;height:36px;border-radius:50%;background:var(--sable);color:var(--olive);display:grid;place-items:center;font-family:Georgia,serif;font-weight:700;font-size:16px;border:2px solid var(--safran)}
+.brand-text strong{font-family:Georgia,serif;font-size:1rem;display:block;line-height:1.1}
+.brand-text span{font-size:.7rem;opacity:.85;text-transform:uppercase;letter-spacing:1px}
+
+main{padding:16px;max-width:1100px;margin:0 auto;padding-bottom:80px}
+.section{background:var(--blanc);padding:18px;border-radius:12px;box-shadow:var(--shadow);margin-bottom:16px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--sable);flex-wrap:wrap;gap:10px}
+.section-header h2{font-size:1.1rem;color:var(--olive-dark)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border-radius:10px;font-weight:700;font-size:.9rem;letter-spacing:.4px;transition:all .2s;text-transform:uppercase}
+.btn-primary{background:var(--olive);color:var(--blanc)}.btn-primary:hover{background:var(--olive-dark)}
+.btn-ghost{background:transparent;color:var(--olive);border:2px solid var(--olive)}.btn-ghost:hover{background:var(--olive);color:var(--blanc)}
+.btn-sm{padding:7px 12px;font-size:.78rem;text-transform:none;letter-spacing:0}
+.btn-terracotta{background:var(--terracotta);color:var(--blanc)}.btn-terracotta:hover{background:var(--terracotta-dark)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* Zone de drop */
+.drop-zone{border:3px dashed var(--sable-dark);border-radius:14px;padding:48px 24px;text-align:center;background:var(--sable-light);transition:all .25s;cursor:pointer;position:relative}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--olive);background:rgba(92,117,65,.06)}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-icon{font-size:2.5rem;margin-bottom:12px}
+.drop-title{font-family:Georgia,serif;font-size:1.1rem;color:var(--olive-dark);margin-bottom:6px}
+.drop-sub{font-size:.82rem;color:var(--encre-soft)}
+.drop-filename{margin-top:14px;display:inline-flex;align-items:center;gap:8px;background:rgba(92,117,65,.1);color:var(--olive-dark);padding:6px 14px;border-radius:20px;font-size:.83rem;font-weight:700}
+
+/* Semaine selector */
+.semaine-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+.field-group{margin-bottom:14px}
+.field-group label{display:block;font-size:.78rem;text-transform:uppercase;letter-spacing:.8px;color:var(--encre-soft);margin-bottom:6px;font-weight:600}
+.field-group input,.field-group select{width:100%;padding:11px 14px;border:2px solid var(--sable-dark);border-radius:10px;background:var(--sable-light);font-size:.95rem}
+.field-group input:focus,.field-group select:focus{outline:none;border-color:var(--olive);background:var(--blanc)}
+
+/* KPIs */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--blanc);padding:14px;border-radius:12px;box-shadow:var(--shadow);border-left:4px solid var(--olive)}
+.kpi-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.8px;color:var(--encre-soft);font-weight:600}
+.kpi-value{font-family:Georgia,serif;font-size:1.45rem;font-weight:700;color:var(--encre);margin-top:4px}
+.kpi.rouge{border-left-color:var(--terracotta)}.kpi.orange{border-left-color:var(--safran)}.kpi.vert{border-left-color:var(--vert)}
+
+/* Tableau résultat */
+.prev-table{width:100%;border-collapse:collapse;font-size:.84rem}
+.prev-table th{background:var(--olive);color:var(--sable);padding:8px 10px;text-align:center;font-size:.71rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.prev-table th.col-left{text-align:left;padding-left:12px;background:var(--olive-dark);min-width:180px}
+.prev-table td{padding:7px 10px;border-bottom:1px solid var(--sable);text-align:center;font-size:.84rem}
+.prev-table td.col-left{text-align:left;padding-left:12px;font-weight:600;background:var(--sable-light)}
+.prev-table td .sub{display:block;font-weight:400;font-size:.7rem;color:var(--encre-soft)}
+.prev-table tr:hover td{background:rgba(92,117,65,.04)}
+.prev-table td.col-left:hover{background:var(--sable-light)}
+.prev-table tr.separator td{background:var(--olive-dark);color:var(--sable-light);font-weight:700;font-size:.8rem;padding:5px 12px;letter-spacing:.5px;text-align:left;text-transform:uppercase}
+
+.ecart-positif{color:var(--vert);font-weight:700}
+.ecart-negatif{color:var(--terracotta);font-weight:700}
+.ecart-zero{color:var(--encre-soft)}
+
+/* Badge statut */
+.badge{display:inline-flex;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700}
+.badge-ok{background:rgba(77,139,58,.15);color:var(--vert)}
+.badge-ko{background:rgba(196,69,54,.15);color:var(--rouge)}
+.badge-warn{background:rgba(232,163,61,.2);color:#8B5E00}
+
+/* Logs */
+.log-box{background:var(--encre);color:#9CA3AF;padding:14px;border-radius:8px;font-family:monospace;font-size:.78rem;max-height:200px;overflow-y:auto;margin-top:10px}
+.log-box .ok{color:#6EE7B7}.log-box .warn{color:var(--safran)}.log-box .err{color:#FCA5A5}
+
+.table-wrapper{overflow-x:auto}
+.hidden{display:none}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+footer{position:fixed;bottom:0;left:0;right:0;background:var(--encre);color:var(--sable);padding:7px 14px;text-align:center;font-size:.7rem}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <div class="brand-mark">UV</div>
+    <div class="brand-text">
+      <strong>PILOT PRÉVISIONS</strong>
+      <span>Import Réalisations ERP</span>
+    </div>
+  </div>
+  <span style="font-size:.75rem;opacity:.8">SCA UNI-VERT</span>
+</header>
+
+<main>
+
+  <!-- ÉTAPE 1 : Fichier -->
+  <div class="section">
+    <div class="section-header">
+      <h2>📂 1 — Charger l'export ERP</h2>
+    </div>
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+      <div class="drop-icon">📊</div>
+      <div class="drop-title">Déposer le fichier Excel ici</div>
+      <div class="drop-sub">ou cliquer pour sélectionner · Formats acceptés : .xlsx, .xls</div>
+      <div id="fileLabel" class="drop-filename hidden"></div>
+    </div>
+  </div>
+
+  <!-- ÉTAPE 2 : Paramètres -->
+  <div class="section">
+    <div class="section-header">
+      <h2>⚙️ 2 — Paramètres</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+      <div class="field-group">
+        <label>Semaine ISO (prévision à comparer)</label>
+        <input type="text" id="semaineId" placeholder="ex: 2026-W25" value="">
+      </div>
+      <div class="field-group">
+        <label>Onglet à analyser</label>
+        <select id="ongletSelect">
+          <option value="conditionnes">Apports conditionnés</option>
+          <option value="brut">Apports brut</option>
+          <option value="les-deux">Les deux (agrégés)</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Webhook n8n</label>
+        <input type="text" id="webhookUrl" value="https://n8n.srv1745823.hstgr.cloud/webhook/import-erp" readonly style="opacity:.6;cursor:not-allowed">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn btn-primary" id="btnAnalyser" disabled>
+        <span id="btnLabel">Analyser</span>
+      </button>
+      <button class="btn btn-ghost btn-sm" id="btnReset">Réinitialiser</button>
+    </div>
+  </div>
+
+  <!-- RÉSULTATS -->
+  <div id="sectionResultats" class="hidden">
+
+    <div class="section">
+      <div class="section-header"><h2>📊 Résumé</h2></div>
+      <div class="kpi-grid" id="kpiGrid"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <h2>📋 Comparatif Prévision vs Réalisation</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm btn-ghost" id="btnEnvoyer">📤 Envoyer à n8n / LLM</button>
+          <button class="btn btn-sm btn-ghost" id="btnExporter">⬇️ Export JSON</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="prev-table" id="tableComparatif">
+          <thead>
+            <tr>
+              <th class="col-left">Producteur · Produit</th>
+              <th>Prévu<br><span style="font-weight:400;text-transform:none">colis</span></th>
+              <th>Réalisé<br><span style="font-weight:400;text-transform:none">colis</span></th>
+              <th>Écart<br><span style="font-weight:400;text-transform:none">colis</span></th>
+              <th>Écart<br><span style="font-weight:400;text-transform:none">%</span></th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section" id="sectionLog">
+      <div class="section-header"><h2>🔍 Log de correspondance</h2></div>
+      <div class="log-box" id="logBox"></div>
+    </div>
+
+  </div>
+
+</main>
+
+<footer>PILOT Prévisions Cloud · SCA UNI-VERT · Import ERP</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+
+// ── Config Supabase ──────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://myxtaraziqgubvzekgjx.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15eHRhcmF6aXFndWJ2emVrZ2p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNzQzMTAsImV4cCI6MjA5NTg1MDMxMH0.aNx2g-K1zUeeNHzt-e2_KRQQBs2yADa5W8g0sTjCTbs';
+
+// ── Mapping noms ERP → noms Supabase (à compléter selon correspondances réelles) ──
+const MAPPING_PRODUCTEURS = {
+  // Correspondances directes ERP → nom_exploitation Supabase
+  'AURI-BIO SCEA':              'AURI-BIO SCEA',
+  'BAGNOLET EARL':              'BAGNOLET (Le)',
+  'COMBE DOMINIQUE - EI':       'COMBE Dominique',
+  'DELORME EARL':               'DELORME Emmanuel',
+  'EARL MOREA PRODUCTION':      'MOREA PRODUCTION',
+  'EC PRODUCTION SCEA':         'EC PRODUCTION',
+  // Trémoult — toutes les variantes possibles ERP
+  'ERIC TREMOULET':             'TREMOULET ERIC',
+  'TREMOULET ERIC':             'TREMOULET ERIC',
+  'TREMOULET E.':               'TREMOULET ERIC',
+  'TREMOULET':                  'TREMOULET ERIC',
+  'E. TREMOULET':               'TREMOULET ERIC',
+  '2130':                       'TREMOULET ERIC',   // code ERP interne
+  'LA FONTAINE EARL':           'FONTAINE ( La)',
+  'LE BOIS JOLI EARL':          'BOIS JOLI',
+  'LES DEUX COLLINES SCEA':     'DEUX COLLINES',
+  'NANIA DIDIER EARL':          'NANIA Didier',
+  'PIMPOUNE CHARENTON EARL':    'PIMPOUNE CHARENTON',
+  'SOURCE DU BOIS EARL':        'SOURCE DU BOIS',
+  'ST VICTOR EARL':             'SAINT VICTOR',
+  'TCHOUKOUMBE EARL':           'TCHOUKOUMBE',
+  // Multi-noms ERP → même producteur Supabase (agrégés automatiquement)
+  'LA SOURCE DU LEVANT EARL':   'SCEA LES CHARDONS',
+  'SCEA LES CHARDONS':          'SCEA LES CHARDONS',
+  'SUD LEGUMES BIO':            'MOREA PRODUCTION',
+};
+
+// Mapping flou producteur : si le nom ERP ne matche pas exactement,
+// on essaie une normalisation par mots-clés
+function normaliserProducteur(nom) {
+  if (!nom) return nom;
+  const exact = MAPPING_PRODUCTEURS[nom.trim()];
+  if (exact) return exact;
+  // Recherche partielle : si le nom ERP contient un mot-clé connu
+  const nomUp = nom.toUpperCase().trim();
+  for (const [key, val] of Object.entries(MAPPING_PRODUCTEURS)) {
+    if (nomUp.includes(key.toUpperCase()) || key.toUpperCase().includes(nomUp)) return val;
+  }
+  // Fallback : nom brut nettoyé
+  return nom.trim();
+}
+
+// Cache du mapping local (calculé une seule fois par analyse)
+let cacheMappingProduits = null;
+
+// ── État ──────────────────────────────────────────────────────────────────────
+let workbook = null;
+let donneesERP = null;
+let donneesSupabase = null;
+let resultatComparatif = null;
+let logs = [];
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileLabel = document.getElementById('fileLabel');
+const btnAnalyser = document.getElementById('btnAnalyser');
+const btnReset = document.getElementById('btnReset');
+const btnEnvoyer = document.getElementById('btnEnvoyer');
+const btnExporter = document.getElementById('btnExporter');
+const semaineInput = document.getElementById('semaineId');
+
+// Calculer semaine ISO courante comme valeur par défaut
+function getSemaineISO() {
+  const d = new Date();
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - day);
+  const y = dt.getUTCFullYear();
+  const start = new Date(Date.UTC(y, 0, 1));
+  const w = Math.ceil(((dt - start) / 86400000 + 1) / 7);
+  return `${y}-W${String(w).padStart(2,'0')}`;
+}
+semaineInput.value = getSemaineISO();
+
+// Drag & drop
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  if (!file.name.match(/\.(xlsx|xls)$/i)) { alert('Format non supporté — utilisez un fichier .xlsx ou .xls'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    workbook = XLSX.read(e.target.result, { type: 'array' });
+    fileLabel.textContent = '📄 ' + file.name;
+    fileLabel.classList.remove('hidden');
+    btnAnalyser.disabled = false;
+    addLog('ok', `Fichier chargé : ${file.name} (${workbook.SheetNames.join(', ')})`);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+btnReset.addEventListener('click', () => {
+  workbook = null; donneesERP = null; donneesSupabase = null; resultatComparatif = null; logs = [];
+  fileLabel.classList.add('hidden'); fileLabel.textContent = '';
+  btnAnalyser.disabled = true;
+  document.getElementById('sectionResultats').classList.add('hidden');
+  document.getElementById('logBox').innerHTML = '';
+  fileInput.value = '';
+});
+
+// ── Analyse ────────────────────────────────────────────────────────────────────
+btnAnalyser.addEventListener('click', async () => {
+  if (!workbook) return;
+  btnAnalyser.disabled = true;
+  document.getElementById('btnLabel').innerHTML = '<span class="spinner"></span> Chargement…';
+  logs = [];
+
+  try {
+    const onglet = document.getElementById('ongletSelect').value;
+    const semaine = semaineInput.value.trim();
+    if (!semaine.match(/^\d{4}-W\d{2}$/)) { alert('Format semaine invalide — ex: 2026-W25'); return; }
+
+    // 1. Parser l'ERP (premier passage pour extraire les produits uniques)
+    // Parser brut pour extraire les produits uniques ERP
+    const produitsERPUniques = extraireProduits(workbook, onglet);
+    addLog('ok', `${produitsERPUniques.length} produits uniques extraits de l'ERP`);
+
+    // 2. Récupérer les prévisions Supabase
+    document.getElementById('btnLabel').innerHTML = '<span class="spinner"></span> Supabase…';
+    donneesSupabase = await fetchPrevisionsSupabase(semaine);
+    const varietesSupabase = [...new Set(donneesSupabase.map(p => p.variete))];
+    addLog('ok', `Supabase : ${donneesSupabase.length} prévisions, ${varietesSupabase.length} variétés distinctes`);
+
+    // 3. Mapping LLM
+    document.getElementById('btnLabel').innerHTML = '<span class="spinner"></span> LLM mapping…';
+    cacheMappingProduits = null; // reset cache à chaque analyse
+    await fetchMappingLLM(produitsERPUniques, varietesSupabase);
+
+    // 4. Parser l'ERP avec le mapping LLM
+    document.getElementById('btnLabel').innerHTML = '<span class="spinner"></span> Analyse…';
+    donneesERP = parserERP(workbook, onglet);
+    addLog('ok', `ERP parsé : ${Object.keys(donneesERP).length} producteurs, ${countTotal(donneesERP)} lignes produit`);
+
+    // 3. Comparer
+    resultatComparatif = comparer(donneesERP, donneesSupabase);
+    addLog('ok', `Comparatif généré : ${resultatComparatif.length} lignes`);
+
+    // 4. Afficher
+    afficherResultats(resultatComparatif, semaine);
+    document.getElementById('sectionResultats').classList.remove('hidden');
+
+  } catch(err) {
+    addLog('err', 'Erreur : ' + err.message);
+    console.error(err);
+  } finally {
+    btnAnalyser.disabled = false;
+    document.getElementById('btnLabel').textContent = 'Analyser';
+    afficherLogs();
+  }
+});
+
+// ── Extraire produits uniques ERP (pour le mapping LLM) ─────────────────────
+function extraireProduits(wb, onglet) {
+  const uniques = new Set();
+  const sheets = [];
+  if (onglet === 'conditionnes' || onglet === 'les-deux') {
+    const s = wb.Sheets['Apports conditionnés'] || wb.Sheets[wb.SheetNames.find(n => n.toLowerCase().includes('condit'))];
+    if (s) sheets.push(s);
+  }
+  if (onglet === 'brut' || onglet === 'les-deux') {
+    const s = wb.Sheets['Apports brut'] || wb.Sheets[wb.SheetNames.find(n => n.toLowerCase().includes('brut'))];
+    if (s) sheets.push(s);
+  }
+  sheets.forEach(sheet => {
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    let headerRow = -1;
+    for (let i = 0; i < Math.min(data.length, 20); i++) {
+      if (data[i].some(c => String(c).trim() === 'Produit')) { headerRow = i; break; }
+    }
+    if (headerRow === -1) return;
+    const headers = data[headerRow].map(c => String(c).trim());
+    const iP = headers.indexOf('Produit');
+    const iV = headers.indexOf('Variete') !== -1 ? headers.indexOf('Variete') : headers.indexOf('Variété');
+    const iC = headers.indexOf('Nb_Colis');
+    const iCal = headers.indexOf('Calibre');
+    for (let r = headerRow + 1; r < data.length; r++) {
+      const row = data[r];
+      const produit = String(row[iP] || '').trim().toUpperCase();
+      const variete = String(row[iV >= 0 ? iV : 1] || '').trim().toUpperCase();
+      const calibre = iCal >= 0 ? String(row[iCal] || '').trim().toUpperCase() : '';
+      const colis = parseFloat(row[iC]) || 0;
+      if (!produit || colis === 0) continue;
+      // Courgette : clé avec calibre pour différencier 18CM / 20CM / etc.
+      // Concombre : tous calibres agrégés → clé sans calibre ni variété
+      // Autres : clé sans calibre (stripperCalibre gère au matching)
+      const estCourgette = produit.startsWith('COURGETTE');
+      const estConcombre = produit.startsWith('CONCOMBRE');
+      const cleVariete = estConcombre ? '' : estCourgette && calibre ? `${variete} ${calibre}`.trim() : variete;
+      uniques.add(`${produit}|${cleVariete}`);
+    }
+  });
+  return [...uniques];
+}
+
+// ── Parser ERP ──────────────────────────────────────────────────────────────
+function parserERP(wb, onglet) {
+  const result = {}; // { nomProducteurNormalise: { nomProduit: totalColis } }
+
+  const sheets = [];
+  if (onglet === 'conditionnes' || onglet === 'les-deux') {
+    const s = wb.Sheets['Apports conditionnés'] || wb.Sheets[wb.SheetNames.find(n => n.toLowerCase().includes('condit'))];
+    if (s) sheets.push({ sheet: s, type: 'conditionnes' });
+  }
+  if (onglet === 'brut' || onglet === 'les-deux') {
+    const s = wb.Sheets['Apports brut'] || wb.Sheets[wb.SheetNames.find(n => n.toLowerCase().includes('brut'))];
+    if (s) sheets.push({ sheet: s, type: 'brut' });
+  }
+
+  sheets.forEach(({ sheet, type }) => {
+    // Trouver la ligne d'en-tête (contient "Produit")
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    let headerRow = -1;
+    for (let i = 0; i < Math.min(data.length, 20); i++) {
+      if (data[i].some(c => String(c).trim() === 'Produit')) { headerRow = i; break; }
+    }
+    if (headerRow === -1) { addLog('warn', `Onglet ${type} : en-tête introuvable`); return; }
+
+    const headers = data[headerRow].map(c => String(c).trim());
+    const iP = headers.indexOf('Produit');
+    const iA = headers.indexOf('Apporteur');
+    const iC = headers.indexOf('Nb_Colis');
+    const iCal = headers.indexOf('Calibre'); // colonne calibre (ignorée pour courgette/concombre)
+    if (iP < 0 || iA < 0 || iC < 0) { addLog('warn', `Onglet ${type} : colonnes manquantes`); return; }
+
+    for (let r = headerRow + 1; r < data.length; r++) {
+      const row = data[r];
+      const produit = String(row[iP] || '').trim().toUpperCase();
+      const variete = String(row[headers.indexOf('Variete')] || row[headers.indexOf('Variété')] || row[1] || '').trim();
+      const calibre = iCal >= 0 ? String(row[iCal] || '').trim() : '';
+      const apporteur = String(row[iA] || '').trim();
+      const colis = parseFloat(row[iC]) || 0;
+      if (!produit || !apporteur || colis === 0) continue;
+
+      const nomNorm = normaliserProducteur(apporteur);
+
+      // Construire la clé ERP selon le type de produit
+      const estCourgette = produit.startsWith('COURGETTE');
+      const estConcombre = PRODUITS_SANS_CALIBRE.some(p => produit.startsWith(p));
+
+      let varieteKey;
+      if (estConcombre) {
+        // Concombre : agréger tous calibres sur une seule clé sans calibre
+        varieteKey = variete;
+      } else if (estCourgette) {
+        // Courgette : inclure le calibre dans la clé (14/21, 21/30...)
+        varieteKey = calibre ? `${variete} ${calibre}`.trim() : variete;
+      } else {
+        varieteKey = variete;
+      }
+
+      const prodNorm = normaliserProduit(produit, varieteKey);
+
+      // Produit non mappé → log et on ignore
+      if (prodNorm === null) {
+        addLog('warn', `Produit non mappé ignoré : "${produit} ${varieteKey}" (apporteur: ${apporteur})`);
+        continue;
+      }
+
+      // Onglet brut : concombre et courgette sont en cogits (½ colis) → ×2
+      const facteurBrut = (type === 'brut' && (estConcombre || estCourgette)) ? 2 : 1;
+
+      if (!result[nomNorm]) result[nomNorm] = {};
+      result[nomNorm][prodNorm] = (result[nomNorm][prodNorm] || 0) + colis * facteurBrut;
+    }
+  });
+
+  return result;
+}
+
+// ── Matching flou local (remplace le webhook LLM) ────────────────────────────
+
+// Corrections manuelles prioritaires (ERP clé → variété Supabase)
+// ── Mapping statique ERP → Variété Supabase ──────────────────────────────────
+// Clé : "PRODUIT|VARIETE" ou "PRODUIT|VARIETE CALIBRE" (tout en majuscules)
+// Valeur : variete exacte dans Supabase
+// Source : mapping_erp_supabase_v3.xlsx — à mettre à jour si l'ERP change
+const MAPPING_PRODUITS_STATIQUE = {
+  // ABRICOT (toutes variétés → ABRICOT)
+  'ABRICOT|ABRICOT':                     'ABRICOT',
+  'ABRICOT|APRISWEET':                   'ABRICOT',
+  'ABRICOT|BIG RED':                     'ABRICOT',
+  'ABRICOT|CONFITURE':                   'ABRICOT',
+  'ABRICOT|DELICOT':                     'ABRICOT',
+  'ABRICOT|FANTASME':                    'ABRICOT',
+  'ABRICOT|FLAVOR COT':                  'ABRICOT',
+  'ABRICOT|FLOPRIA':                     'ABRICOT',
+  'ABRICOT|LADY COT':                    'ABRICOT',
+  'ABRICOT|LIDO':                        'ABRICOT',
+  'ABRICOT|SUNNY COT':                   'ABRICOT',
+  // AUBERGINE
+  'AUBERGINE|NOIRE':                     'AUBERGINE',
+  // CONCOMBRE : COURT → variété séparée, LONG (toutes variétés/calibres) → CONCOMBRE générique
+  'CONCOMBRE|COURT EPINEUX':             'CONCOMBRE COURT',
+  'CONCOMBRE|LONG':                      'CONCOMBRE',
+  'CONCOMBRE|LONG 300-400':              'CONCOMBRE',
+  'CONCOMBRE|LONG 400-500':              'CONCOMBRE',
+  'CONCOMBRE|':                          'CONCOMBRE',
+  // COURGETTE : avec calibre → variété précise, sans calibre → 14/21 par défaut
+  'COURGETTE|LONGUE VERTE 14/21':        'COURGETTE LONGUE VERTE 14/21',
+  'COURGETTE|LONGUE VERTE 21/30':        'COURGETTE LONGUE VERTE 21/30',
+  'COURGETTE|LONGUE VERTE':              'COURGETTE LONGUE VERTE 14/21',
+  'COURGETTE|RONDE VERTE':               'COURGETTE RONDE 12p',
+  // FENOUIL
+  'FENOUIL|FENOUIL':                     'FENOUIL',
+  'FENOUIL|':                            'FENOUIL',
+  // HARICOT
+  'HARICOT|PLAT':                        'HARICOT PLAT',
+  'HARICOT|VERT FIN CM':                 'HARICOT VERT',
+  // MELON
+  'MELON|CHARENT ÉCRIT JAUNE':           'MELON',
+  'MELON|CHARENT ECRIT JAUNE':           'MELON',
+  'MELON|':                              'MELON',
+  // PASTÈQUE
+  'PASTÈQUE|MINI':                       'Pastèque mini',
+  'PASTEQUE|MINI':                       'Pastèque mini',
+  // POIVRON
+  'POIVRON|POIVRON VERT DOUX':           'POIVRON VERT',
+  'POIVRON|VERT DOUX':                   'POIVRON VERT',
+  // TOMATE
+  'TOMATE|ALL COEUR HYB':                'TOMATE ALLONGEE COEUR HYBRIDE',
+  'TOMATE|ALL COEUR JAUNE POPULATION':   'TOMATE COEUR JAUNE POPULATION',
+  'TOMATE|ALL COEUR POPULATION':         'TOMATE COEUR ROUGE POPULATION',
+  'TOMATE|ALL CORNUE HYB':               'TOMATE CORNUE',
+  'TOMATE|ALLONGEE HYB':                 'TOMATE ALLONGEE ROMA',
+  'TOMATE|ANANAS POPULATION':            'TOMATE ANANAS POPULATION',
+  'TOMATE|CERISE ALL HYB':               'TOMATE HYBRIDE CERISE',
+  'TOMATE|COTELE JAUNE HYB':             'TOMATE COTELEE JAUNE HYBRIDE',
+  'TOMATE|COTELE NOIRE HYB':             'TOMATE COTELEE NOIRE HYBRIDE',
+  'TOMATE|COTELE NOIRE POP':             'TOMATE NOIRE DE CRIMEE POPULATION',
+  'TOMATE|COTELE ROUGE HYB':             'TOMATE COTELEE ROUGE HYBRIDE',
+  'TOMATE|COTELEE JAUNE POP':            'TOMATE COEUR JAUNE POPULATION',
+  'TOMATE|RONDE GRAPPE HYB':             'TOMATE GRAPPE HYBRIDE',
+  'TOMATE|RONDE HYB':                    'TOMATE RONDE HYBRIDE',
+};
+
+// Produits à agréger sans calibre (total colis, toutes variétés ERP sommées)
+const PRODUITS_SANS_CALIBRE = ['CONCOMBRE'];
+
+function normaliserProduit(produit, varieteAvecCalibre) {
+  const cleERP = `${produit.toUpperCase()}|${(varieteAvecCalibre || '').toUpperCase()}`;
+  if (MAPPING_PRODUITS_STATIQUE[cleERP]) return MAPPING_PRODUITS_STATIQUE[cleERP];
+  // Fallback : produit seul
+  const cleProduit = `${produit.toUpperCase()}|`;
+  if (MAPPING_PRODUITS_STATIQUE[cleProduit]) return MAPPING_PRODUITS_STATIQUE[cleProduit];
+  // Dernier recours : retourner null pour signaler que ce produit n'est pas mappé
+  return null;
+}
+
+// fetchMappingLLM devient un no-op — mapping statique, pas de réseau
+async function fetchMappingLLM(produitsERPUniques, varietesSupabase) {
+  addLog('ok', `Mapping statique : ${Object.keys(MAPPING_PRODUITS_STATIQUE).length} correspondances chargées`);
+  return MAPPING_PRODUITS_STATIQUE;
+}
+
+
+function countTotal(d) {
+  return Object.values(d).reduce((s, prods) => s + Object.keys(prods).length, 0);
+}
+
+// ── Fetch Supabase ─────────────────────────────────────────────────────────
+async function fetchPrevisionsSupabase(semaine) {
+  // Récupérer previsions + adherents + produits
+  const [prevR, adhR, prodR] = await Promise.all([
+    fetch(`${SUPABASE_URL}/rest/v1/previsions?semaine_id=eq.${semaine}&select=adherent_id,produit_code,total`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    }).then(r => r.json()),
+    fetch(`${SUPABASE_URL}/rest/v1/adherents?actif=eq.true&select=id,representant,nom_exploitation`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    }).then(r => r.json()),
+    fetch(`${SUPABASE_URL}/rest/v1/produits?select=code,variete,famille,emballage`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    }).then(r => r.json()),
+  ]);
+
+  const adhMap = {};
+  (adhR || []).forEach(a => adhMap[a.id] = a.nom_exploitation || a.representant);
+  const prodMap = {};
+  (prodR || []).forEach(p => prodMap[p.code] = { variete: p.variete, famille: p.famille, emballage: p.emballage });
+
+  return (prevR || []).map(p => ({
+    adherent_id: p.adherent_id,
+    nom_exploitation: adhMap[p.adherent_id] || p.adherent_id,
+    produit_code: p.produit_code,
+    variete: prodMap[p.produit_code]?.variete || p.produit_code,
+    famille: prodMap[p.produit_code]?.famille || '',
+    emballage: prodMap[p.produit_code]?.emballage || '',
+    total_prevu: parseFloat(p.total) || 0
+  }));
+}
+
+// ── Comparaison ─────────────────────────────────────────────────────────────
+function comparer(erp, supabase) {
+  const result = [];
+
+  // Clé de jointure : uppercase + trim des deux côtés
+  const normKey = (nom, produit) => `${nom.trim().toUpperCase()}|||${produit.trim().toUpperCase()}`;
+
+  // Côté Supabase : normaliser aussi le nom producteur via MAPPING_PRODUCTEURS
+  // pour que "AURI-BIO SCEA" Supabase matche "AURI-BIO SCEA" ERP
+  const prevMap = {};     // normKey → total prévu
+  const prevDisplay = {}; // normKey → { nom, produit } pour l'affichage
+  supabase.forEach(p => {
+    const nomNorm = normaliserProducteur(p.nom_exploitation.trim());
+    // Concombre LONG → agréger sous CONCOMBRE, CONCOMBRE COURT reste distinct
+    const varUp = (p.variete || '').toUpperCase();
+    const estConcombreLong = varUp.startsWith('CONCOMBRE') && !varUp.includes('COURT');
+    const cleVariete = estConcombreLong ? 'CONCOMBRE' : p.variete;
+    const key = normKey(nomNorm, cleVariete);
+    if (!prevMap[key]) {
+      prevMap[key] = 0;
+      prevDisplay[key] = { nom: nomNorm, produit: cleVariete };
+    }
+    // ×2 cogit : uniquement si le champ emballage du produit Supabase contient "cogit"
+    const estCogit = (p.emballage || '').toLowerCase().includes('cogit');
+    const facteur = estCogit ? 2 : 1;
+    if (estCogit) addLog('ok', `Cogit ×2 : ${nomNorm} — ${p.variete} (${p.total_prevu} cogits → ${p.total_prevu * 2} colis)`);
+    prevMap[key] += p.total_prevu * facteur;
+  });
+
+  // Côté ERP : les clés sont déjà { nomNormalise: { varieteMappeeLLM: colis } }
+  // grâce à normaliserProducteur() + normaliserProduit() dans parserERP()
+  const erpNorm = {};
+  Object.entries(erp).forEach(([nom, prods]) => {
+    Object.entries(prods).forEach(([produit, colis]) => {
+      const key = normKey(nom, produit);
+      erpNorm[key] = (erpNorm[key] || 0) + colis;
+    });
+  });
+
+  // Union des deux ensembles
+  const keys = new Set([...Object.keys(prevMap), ...Object.keys(erpNorm)]);
+
+  keys.forEach(key => {
+    const display = prevDisplay[key] || { nom: key.split('|||')[0], produit: key.split('|||')[1] };
+    const prevu   = prevMap[key]  || 0;
+    const realise = erpNorm[key]  || 0;
+    const ecart   = realise - prevu;
+    const ecartPct = prevu > 0 ? Math.round((ecart / prevu) * 100) : null;
+
+    if (prevu === 0 && realise > 0)
+      addLog('warn', `ERP sans prévision Supabase : ${display.nom} — ${display.produit} (${realise} colis réalisés)`);
+    if (prevu > 0 && realise === 0)
+      addLog('warn', `Prévu mais aucun apport ERP : ${display.nom} — ${display.produit} (${prevu} colis prévus)`);
+
+    result.push({ nom: display.nom, produit: display.produit, prevu, realise, ecart, ecartPct });
+  });
+
+  // Trier : nom puis produit
+  result.sort((a, b) => a.nom.localeCompare(b.nom, 'fr') || a.produit.localeCompare(b.produit, 'fr'));
+  return result;
+}
+
+// ── Affichage ──────────────────────────────────────────────────────────────
+function afficherResultats(data, semaine) {
+  // KPIs
+  const totalPrevu = data.reduce((s, r) => s + r.prevu, 0);
+  const totalRealise = data.reduce((s, r) => s + r.realise, 0);
+  const nbEcarts = data.filter(r => r.prevu > 0 && r.realise > 0 && Math.abs(r.ecartPct) > 15).length;
+  const nbManquants = data.filter(r => r.prevu > 0 && r.realise === 0).length;
+  const ecartTotal = totalRealise - totalPrevu;
+  const ecartPctTotal = totalPrevu > 0 ? Math.round((ecartTotal / totalPrevu) * 100) : 0;
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Semaine</div><div class="kpi-value">${semaine.replace('W','S')}</div></div>
+    <div class="kpi"><div class="kpi-label">Total prévu</div><div class="kpi-value">${totalPrevu.toLocaleString('fr-FR')}</div></div>
+    <div class="kpi ${ecartTotal >= 0 ? 'vert' : 'rouge'}"><div class="kpi-label">Total réalisé</div><div class="kpi-value">${totalRealise.toLocaleString('fr-FR')}</div></div>
+    <div class="kpi ${Math.abs(ecartPctTotal) > 10 ? 'rouge' : 'vert'}"><div class="kpi-label">Écart global</div><div class="kpi-value">${ecartTotal > 0 ? '+' : ''}${ecartTotal.toLocaleString('fr-FR')} (${ecartPctTotal > 0 ? '+' : ''}${ecartPctTotal}%)</div></div>
+    <div class="kpi orange"><div class="kpi-label">Écarts > 15%</div><div class="kpi-value">${nbEcarts}</div></div>
+    <div class="kpi rouge"><div class="kpi-label">Prévus non livrés</div><div class="kpi-value">${nbManquants}</div></div>
+  `;
+
+  // Tableau
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  let nomCourant = null;
+
+  // Totaux par producteur
+  const totauxProd = {};
+  data.forEach(r => {
+    if (!totauxProd[r.nom]) totauxProd[r.nom] = { prevu: 0, realise: 0 };
+    totauxProd[r.nom].prevu   += r.prevu;
+    totauxProd[r.nom].realise += r.realise;
+  });
+
+  data.forEach(r => {
+    if (r.nom !== nomCourant) {
+      nomCourant = r.nom;
+      const tp = totauxProd[r.nom];
+      const ep = tp.realise - tp.prevu;
+      const epPct = tp.prevu > 0 ? Math.round((ep / tp.prevu) * 100) : null;
+      const epStr = epPct !== null
+        ? ` <span style="font-weight:400;font-size:.75rem;opacity:.85">(${epPct >= 0 ? '+' : ''}${epPct}% · ${tp.realise.toLocaleString('fr-FR')} / ${tp.prevu.toLocaleString('fr-FR')} colis)</span>`
+        : ` <span style="font-weight:400;font-size:.75rem;opacity:.85">(${tp.realise.toLocaleString('fr-FR')} colis réalisés)</span>`;
+      const sep = document.createElement('tr');
+      sep.className = 'separator';
+      sep.innerHTML = `<td colspan="6">👤 ${r.nom}${epStr}</td>`;
+      tbody.appendChild(sep);
+    }
+
+    const ecartClass = r.ecart > 0 ? 'ecart-positif' : r.ecart < 0 ? 'ecart-negatif' : 'ecart-zero';
+    const pct = r.ecartPct !== null ? `${r.ecartPct > 0 ? '+' : ''}${r.ecartPct}%` : '—';
+    let badge = '';
+    if (r.prevu === 0 && r.realise > 0) badge = '<span class="badge badge-warn">Non prévu</span>';
+    else if (r.prevu > 0 && r.realise === 0) badge = '<span class="badge badge-ko">Non livré</span>';
+    else if (r.ecartPct !== null && Math.abs(r.ecartPct) <= 10) badge = '<span class="badge badge-ok">✓</span>';
+    else if (r.ecartPct !== null && Math.abs(r.ecartPct) > 15) badge = '<span class="badge badge-ko">⚠️ Écart</span>';
+    else badge = '<span class="badge badge-warn">~</span>';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="col-left"><span class="sub" style="font-weight:600">${r.produit}</span></td>
+      <td>${r.prevu > 0 ? r.prevu.toLocaleString('fr-FR') : '<span style="color:var(--encre-soft)">—</span>'}</td>
+      <td>${r.realise > 0 ? r.realise.toLocaleString('fr-FR') : '<span style="color:var(--encre-soft)">—</span>'}</td>
+      <td class="${ecartClass}">${r.ecart !== 0 ? (r.ecart > 0 ? '+' : '') + r.ecart.toLocaleString('fr-FR') : '—'}</td>
+      <td class="${ecartClass}">${pct}</td>
+      <td>${badge}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Logs ────────────────────────────────────────────────────────────────────
+function addLog(type, msg) {
+  logs.push({ type, msg });
+}
+function afficherLogs() {
+  const box = document.getElementById('logBox');
+  box.innerHTML = logs.map(l => `<div class="${l.type}">[${l.type.toUpperCase()}] ${l.msg}</div>`).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+// ── Export / Envoi ──────────────────────────────────────────────────────────
+btnExporter.addEventListener('click', () => {
+  if (!resultatComparatif) return;
+  const blob = new Blob([JSON.stringify({ semaine: semaineInput.value, data: resultatComparatif, logs }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `comparatif_${semaineInput.value}.json`; a.click();
+});
+
+btnEnvoyer.addEventListener('click', async () => {
+  const url = document.getElementById('webhookUrl').value.trim();
+  if (!url) { alert('Renseignez l\'URL du webhook n8n'); return; }
+  if (!resultatComparatif) return;
+  btnEnvoyer.disabled = true;
+  btnEnvoyer.textContent = '⏳ Envoi…';
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ semaine: semaineInput.value, comparatif: resultatComparatif, logs })
+    });
+    if (r.ok) { btnEnvoyer.textContent = '✅ Envoyé !'; setTimeout(() => { btnEnvoyer.textContent = '📤 Envoyer à n8n / LLM'; btnEnvoyer.disabled = false; }, 3000); }
+    else { alert('Erreur webhook : ' + r.status); btnEnvoyer.disabled = false; btnEnvoyer.textContent = '📤 Envoyer à n8n / LLM'; }
+  } catch(e) {
+    alert('Erreur réseau : ' + e.message);
+    btnEnvoyer.disabled = false; btnEnvoyer.textContent = '📤 Envoyer à n8n / LLM';
+  }
+});
+
+</script>
+</body>
+</html>
